@@ -1,0 +1,257 @@
+<?php
+
+namespace App\Services;
+
+use App\Repositories\PostRepo;
+use Exception;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use App\Repositories\CommentRepo;
+use App\Models\Post;
+
+class PostService
+{
+    protected $postRepo;
+    protected $commentRepo;
+
+    public function __construct(PostRepo $postRepo, CommentRepo $commentRepo)
+    {
+        $this->postRepo = $postRepo;
+        $this->commentRepo = $commentRepo;
+    }       
+
+    public function getPostById($id)
+    {
+        try {
+            return $this->postRepo->find($id);
+        } catch (Exception $e) {
+            // Handle exception
+            return null;
+        }
+    }
+
+    public function createPost($data)
+    {
+        try {
+            // Controller đã validate rồi, không cần validate lại
+            // $data là array, không phải Request object
+            
+            // Set default values
+            $data['like'] = $data['like'] ?? 0;
+            $data['comment'] = $data['comment'] ?? 0;
+            $data['status'] = $data['status'] ?? 'active';
+
+            return $this->postRepo->createPost($data);
+        } catch (Exception $e) {
+            \Log::error('PostService createPost error:', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    public function getAllPosts($currentUserId, $lastId = null, $limit = 20)
+    {
+        try {
+            return $this->postRepo->all($currentUserId, $lastId, $limit);
+        } catch (Exception $e) {
+            // Handle exception
+            return [];
+        }
+    }
+
+    public function updatePostById($id, $data)
+    {
+        try {
+            $result =  $this->postRepo->updatePostById($id, $data);
+            return [
+                'success' => $result,
+                'message' => $result ? 'Post updated successfully' : 'Post not found'
+            ];
+        } catch (Exception $e) {
+            // Handle exception
+            return null;
+        }
+    }
+
+    public function deletePostById($id)
+    {
+        try {
+            $result =  $this->postRepo->deletePostById($id);
+            return [
+                'success' => $result,
+                'message' => $result ? 'Post deleted successfully' : 'Post not found'
+            ];
+        } catch (Exception $e) {
+            // Handle exception
+            return null;
+        }
+    }
+
+    public function searchPosts($query)
+    {
+        try {
+            return $this->postRepo->searchPost($query);
+        } catch (Exception $e) {
+            // Handle exception
+            return [];
+        }
+    }
+
+    public function updateLikeOfPost($postId, $status = 1): bool
+    {   
+        try {
+
+            $post = $this->getPostById($postId);
+            if (!$post) {
+                throw new Exception('Post not found');
+            }
+            $post->likes = ($post->likes ?? 0) + $status;
+            $post->save();
+            return true;
+        } catch (Exception $e) {
+            // Handle exception
+            return false;
+        }
+    }
+
+    public function addCommentOfPost($postId, $userId, $content)
+    {
+        $content = trim($content);
+        if ($content === '') {
+            throw new Exception('Content cannot be empty');
+        }
+        // $comment = $this->commentRepo->addCommentOfPost([
+        //         'post_id' => $postId,
+        //         'author_id' => $userId,
+        //         'content'  => $content
+        //     ]);
+        // return $comment;
+        DB::beginTransaction();
+        try {
+            $comment = $this->commentRepo->addCommentOfPost([
+                'post_id' => $postId,
+                'author_id' => $userId,
+                'content'  => $content
+            ]);
+
+            $post = $this->getPostById($postId);
+            if (!$post) {
+                throw new Exception('Post not found');
+            }
+
+            $post->comments += 1;
+            $post->save();
+
+            DB::commit();
+
+            return $comment; // Sửa đúng biến
+        } catch (Exception $e) {
+            DB::rollBack();
+            return null;
+        }
+    }
+
+
+    public function getCommentsOfPost($postId)
+    {
+        try {
+            return $this->commentRepo->getCommentsOfPost($postId);
+        } catch (Exception $e) {
+            // Handle exception
+            return [];
+        }
+    }
+
+    public function getLikesOfPost($postId)
+    {
+        try {
+            return $this->postRepo->getLikesByPostId($postId);
+        } catch (Exception $e) {
+            // Handle exception
+            return [];
+        }
+    }
+
+    public function getPostsByUserId($userId)
+    {
+        try {
+            return $this->postRepo->getPostsByUserId($userId);
+        } catch (Exception $e) {
+            // Handle exception
+            return [];
+        }
+    }
+
+    public function getPostsByChannel($channelId, $userId = null)
+    {
+        try {
+            return $this->postRepo->getPostsByChannel($channelId, $userId);
+        } catch (Exception $e) {
+            \Log::error('PostService getPostsByChannel error:', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // Thêm comment vào post
+    // public function addCommentOfPost(array $data)
+    // {
+    //     try {
+    //         // Validate required fields
+    //         if (!isset($data['post_id']) || !isset($data['content'])) {
+    //             throw new \Exception('Missing required fields: post_id and content');
+    //         }
+
+    //         // Get author_id from auth or request
+    //         $authorId = $data['author_id'] ?? auth()->id();
+            
+    //         if (!$authorId) {
+    //             throw new \Exception('Author ID is required');
+    //         }
+
+    //         $comment = $this->commentRepo->createComment([
+    //             'post_id' => $data['post_id'],
+    //             'author_id' => $authorId,
+    //             'content' => $data['content'],
+    //             'parent_id' => $data['parent_id'] ?? null,
+    //         ]);
+
+    //         // Load author relationship
+    //         $comment->load('author:id,name,avatar,role');
+
+    //         \Log::info('Comment created successfully:', [
+    //             'comment_id' => $comment->id,
+    //             'post_id' => $comment->post_id,
+    //             'author' => $comment->author->name ?? 'Unknown'
+    //         ]);
+
+    //         return $comment;
+    //     } catch (\Exception $e) {
+    //         \Log::error('Error creating comment: ' . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
+
+    /**
+     * Lấy 5 bài post có nhiều like nhất trong 7 ngày gần đây
+     */
+    public function getTrendingPosts($limit = 5)
+    {
+        try {
+            $sevenDaysAgo = Carbon::now()->subDays(7);
+            
+            $trendingPosts = Post::with('user:id,username,email,image')
+                ->where('created_at', '>=', $sevenDaysAgo)
+                ->where('status', 'active')
+                ->orderBy('likes', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            return $trendingPosts;
+        } catch (Exception $e) {
+            \Log::error('Error getting trending posts: ' . $e->getMessage());
+            return collect([]);
+        }
+    }
+}

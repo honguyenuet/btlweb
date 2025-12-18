@@ -1,0 +1,69 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/*.local.ts
+/*.local.tsx
+/venv
+/pyresttest
+
+QUICK_START.md
+USAGE_EXAMPLES.md
+WEB_PUSH_IMPLEMENTATION_GUIDE.md
+ENVIRONMENT_VARIABLES.md
+APPROVE_REJECT_EVENTS.md
+API_TESTING_GUIDE.md
+IMAGE_FIX_GUIDE.md
+NOTIFICATION_WEBSOCKET.md
+REVERB_SETUP.md
+NAVBAR_NOTIFICATION_INTEGRATION.md
+WEBSOCKET_INTEGRATED.md
+FIX_WEBSOCKET_2_USERS.md
+DEBUG_NOTIFICATION_ICON.md
+FIX_PUSHER_ERROR.md
+DEBUG_WEBSOCKET_NOTIFICATION.md
+
+img.*.png
+run_api_tests.py
+test.py
+/pyresttest_perf.py
+
+/scripts
